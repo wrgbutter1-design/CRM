@@ -26,17 +26,19 @@ npm run dev
 
 Then open http://localhost:3000.
 
-`npm run build` and `npm run lint` both pass as of the last commit.
+`npm run build` and `npm run lint` both pass as of the last commit. The dev
+server has also been run and verified end-to-end against the live database
+(customer list, job list with status filters, and a customer detail page all
+render real data).
 
 ## A note on this sandbox
 
-This app was built and type-checked inside a Claude Code remote session,
-whose network egress policy blocks the container from reaching
-`*.supabase.co` directly — so the dev server couldn't be exercised against
-the live database from inside that sandbox. That's a property of the
-sandbox, not the app: running `npm run dev` on a normal machine (or your own
-laptop) reaches Supabase over the open internet like any other app. If you
-hit an issue that isn't reproducible locally, mention that context.
+Claude Code sessions run in a network-sandboxed cloud environment by
+default (Trusted access: package registries and a few other allowlisted
+domains, nothing else), so exercising this app against Supabase from inside
+one requires adding `*.supabase.co` to that environment's **Custom** network
+access list first. See [Configure cloud environments](https://code.claude.com/docs/en/cloud-environments#network-access)
+if you hit the same thing.
 
 ## Next steps
 
