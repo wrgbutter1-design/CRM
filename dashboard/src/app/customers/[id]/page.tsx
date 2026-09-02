@@ -33,12 +33,19 @@ export default async function CustomerDetailPage({
 
   const { data: jobs, error: jobsError } = await supabase
     .from("jobs")
-    .select("*, job_notes(id, author, note, created_at)")
+    .select("*, job_notes(id, author, note, created_at), job_leaders(name)")
     .eq("customer_id", id)
     .order("created_at", { ascending: false })
     .order("created_at", { ascending: true, foreignTable: "job_notes" });
 
   if (jobsError) throw new Error(jobsError.message);
+
+  const { data: jobLeaders, error: jobLeadersError } = await supabase
+    .from("job_leaders")
+    .select("name")
+    .order("name");
+
+  if (jobLeadersError) throw new Error(jobLeadersError.message);
 
   return (
     <div className="flex flex-col gap-10">
@@ -100,6 +107,10 @@ export default async function CustomerDetailPage({
               </div>
 
               <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
+                <div>
+                  <dt className="text-xs text-muted">Job leader</dt>
+                  <dd>{job.job_leaders?.name ?? "—"}</dd>
+                </div>
                 <div>
                   <dt className="text-xs text-muted">Site</dt>
                   <dd>{job.site_address ?? "—"}</dd>
@@ -210,6 +221,20 @@ export default async function CustomerDetailPage({
               name="scheduled_date"
               className="rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-accent"
             />
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-medium">Job leader</span>
+            <input
+              name="job_leader"
+              list="job-leader-options"
+              placeholder="Who ran this job"
+              className="rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-accent"
+            />
+            <datalist id="job-leader-options">
+              {jobLeaders.map((leader) => (
+                <option key={leader.name} value={leader.name} />
+              ))}
+            </datalist>
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium">Site address</span>

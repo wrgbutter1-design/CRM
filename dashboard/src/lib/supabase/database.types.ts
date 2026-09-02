@@ -80,6 +80,24 @@ export type Database = {
           },
         ]
       }
+      job_leaders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       job_notes: {
         Row: {
           author: string
@@ -120,6 +138,7 @@ export type Database = {
           description: string | null
           final_amount: number | null
           id: string
+          job_leader_id: string | null
           quoted_amount: number | null
           scheduled_date: string | null
           site_address: string | null
@@ -134,6 +153,7 @@ export type Database = {
           description?: string | null
           final_amount?: number | null
           id?: string
+          job_leader_id?: string | null
           quoted_amount?: number | null
           scheduled_date?: string | null
           site_address?: string | null
@@ -148,6 +168,7 @@ export type Database = {
           description?: string | null
           final_amount?: number | null
           id?: string
+          job_leader_id?: string | null
           quoted_amount?: number | null
           scheduled_date?: string | null
           site_address?: string | null
@@ -156,6 +177,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_job_leader_id_fkey"
+            columns: ["job_leader_id"]
+            isOneToOne: false
+            referencedRelation: "job_leaders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_customer_id_fkey"
             columns: ["customer_id"]

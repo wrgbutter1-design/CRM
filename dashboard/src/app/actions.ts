@@ -35,6 +35,20 @@ export async function createCustomer(formData: FormData) {
   revalidatePath("/");
 }
 
+async function resolveJobLeaderId(
+  supabase: ReturnType<typeof createClient>,
+  name: string | null
+): Promise<string | null> {
+  if (!name) return null;
+  const { data, error } = await supabase
+    .from("job_leaders")
+    .upsert({ name }, { onConflict: "name" })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
 export async function createJob(formData: FormData) {
   const customerId = str(formData, "customer_id");
   const title = str(formData, "title");
@@ -43,6 +57,11 @@ export async function createJob(formData: FormData) {
   }
 
   const supabase = createClient();
+  const jobLeaderId = await resolveJobLeaderId(
+    supabase,
+    str(formData, "job_leader")
+  );
+
   const { error } = await supabase.from("jobs").insert({
     customer_id: customerId,
     title,
@@ -51,6 +70,7 @@ export async function createJob(formData: FormData) {
     site_address: str(formData, "site_address"),
     quoted_amount: num(formData, "quoted_amount"),
     scheduled_date: str(formData, "scheduled_date"),
+    job_leader_id: jobLeaderId,
   });
   if (error) throw new Error(error.message);
 

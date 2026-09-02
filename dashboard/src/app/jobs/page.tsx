@@ -15,7 +15,7 @@ export default async function JobsPage({
 
   let query = supabase
     .from("jobs")
-    .select("*, customers(id, name, company_name)")
+    .select("*, customers(id, name, company_name), job_leaders(name)")
     .order("created_at", { ascending: false });
 
   if (status && (JOB_STATUSES as readonly string[]).includes(status)) {
@@ -61,11 +61,12 @@ export default async function JobsPage({
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-        <table className="w-full min-w-[700px] text-sm">
+        <table className="w-full min-w-[800px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted">
               <th className="px-4 py-3">Job</th>
               <th className="px-4 py-3">Customer</th>
+              <th className="px-4 py-3">Job leader</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Scheduled</th>
               <th className="px-4 py-3 text-right">Quoted</th>
@@ -74,7 +75,7 @@ export default async function JobsPage({
           <tbody>
             {jobs.length === 0 && (
               <tr>
-                <td className="px-4 py-6 text-muted" colSpan={5}>
+                <td className="px-4 py-6 text-muted" colSpan={6}>
                   No jobs match this filter.
                 </td>
               </tr>
@@ -91,6 +92,9 @@ export default async function JobsPage({
                       {job.customers.company_name ?? job.customers.name}
                     </Link>
                   )}
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  {job.job_leaders?.name ?? "—"}
                 </td>
                 <td className="px-4 py-3">
                   <StatusBadge status={toJobStatus(job.status)} />
