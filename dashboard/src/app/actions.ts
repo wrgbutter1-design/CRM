@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/client";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { toJobStatus } from "@/lib/format";
 
 function str(formData: FormData, key: string): string | null {
@@ -22,7 +23,7 @@ export async function createCustomer(formData: FormData) {
   const name = str(formData, "name");
   if (!name) throw new Error("Customer name is required.");
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("customers").insert({
     name,
     company_name: str(formData, "company_name"),
@@ -36,7 +37,7 @@ export async function createCustomer(formData: FormData) {
 }
 
 async function resolveJobLeaderId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   name: string | null
 ): Promise<string | null> {
   if (!name) return null;
@@ -56,7 +57,7 @@ export async function createJob(formData: FormData) {
     throw new Error("Job title is required.");
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const jobLeaderId = await resolveJobLeaderId(
     supabase,
     str(formData, "job_leader")
@@ -87,11 +88,17 @@ export async function addJobNote(formData: FormData) {
     throw new Error("Author and note are required.");
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("job_notes")
     .insert({ job_id: jobId, author, note });
   if (error) throw new Error(error.message);
 
   if (customerId) revalidatePath(`/customers/${customerId}`);
+}
+
+export async function signOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
 }

@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { createCustomer } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function CustomersPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: customers, error } = await supabase
     .from("customers")
     .select("id, name, company_name, phone, email, jobs(count)")

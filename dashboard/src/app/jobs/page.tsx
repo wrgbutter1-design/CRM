@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/status-badge";
 import { JOB_STATUSES, formatDate, formatMoney, statusLabel, toJobStatus } from "@/lib/format";
 
@@ -11,7 +11,7 @@ export default async function JobsPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   let query = supabase
     .from("jobs")

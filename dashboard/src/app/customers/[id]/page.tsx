@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/status-badge";
 import {
   JOB_STATUSES,
@@ -20,7 +20,7 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: customer, error: customerError } = await supabase
     .from("customers")

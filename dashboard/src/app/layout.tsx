@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { signOut } from "./actions";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,7 +20,12 @@ export const metadata: Metadata = {
   description: "Customers and jobs, current and past.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <html
       lang="en"
@@ -30,14 +37,25 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="text-[15px] font-semibold tracking-tight">
               Serpaco <span className="text-accent">CRM</span>
             </Link>
-            <nav className="flex items-center gap-5 text-sm font-medium text-muted">
-              <Link href="/" className="hover:text-foreground">
-                Customers
-              </Link>
-              <Link href="/jobs" className="hover:text-foreground">
-                Jobs
-              </Link>
-            </nav>
+            {user && (
+              <nav className="flex items-center gap-5 text-sm font-medium text-muted">
+                <Link href="/" className="hover:text-foreground">
+                  Customers
+                </Link>
+                <Link href="/jobs" className="hover:text-foreground">
+                  Jobs
+                </Link>
+                <span className="text-xs text-muted">{user.email}</span>
+                <form action={signOut}>
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent"
+                  >
+                    Sign out
+                  </button>
+                </form>
+              </nav>
+            )}
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
