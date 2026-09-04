@@ -3,14 +3,17 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/status-badge";
 import {
+  EXPENSE_CATEGORIES,
   JOB_STATUSES,
+  expenseCategoryLabel,
   formatDate,
   formatDateTime,
   formatMoney,
+  looksLikeImage,
   statusLabel,
   toJobStatus,
 } from "@/lib/format";
-import { addJobNote, createJob } from "../../actions";
+import { addJobExpense, addJobNote, addJobPhoto, createJob } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +36,14 @@ export default async function CustomerDetailPage({
 
   const { data: jobs, error: jobsError } = await supabase
     .from("jobs")
-    .select("*, job_notes(id, author, note, created_at), job_leaders(name)")
+    .select(
+      "*, job_notes(id, author, note, created_at), job_leaders(name), job_documents(id, label, url, uploaded_at), job_expenses(id, category, description, amount, receipt_url, spent_on)"
+    )
     .eq("customer_id", id)
     .order("created_at", { ascending: false })
-    .order("created_at", { ascending: true, foreignTable: "job_notes" });
+    .order("created_at", { ascending: true, foreignTable: "job_notes" })
+    .order("uploaded_at", { ascending: false, foreignTable: "job_documents" })
+    .order("spent_on", { ascending: false, foreignTable: "job_expenses" });
 
   if (jobsError) throw new Error(jobsError.message);
 
@@ -171,6 +178,176 @@ export default async function CustomerDetailPage({
                   Add note
                 </button>
               </form>
+
+              <div className="mt-4 border-t border-border pt-3">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted">
+                  Photos
+                </h4>
+                {job.job_documents.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {job.job_documents.map((doc) => (
+                      <a
+                        key={doc.id}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block overflow-hidden rounded-lg border border-border"
+                        title={doc.label}
+                      >
+                        {looksLikeImage(doc.url) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={doc.url}
+                            alt={doc.label}
+                            className="h-20 w-20 object-cover"
+                          />
+                        ) : (
+                          <span className="flex h-20 w-20 items-center justify-center p-2 text-center text-xs text-muted">
+                            {doc.label}
+                          </span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <form
+                  action={addJobPhoto}
+                  className="mt-2 flex flex-wrap items-center gap-2"
+                >
+                  <input type="hidden" name="job_id" value={job.id} />
+                  <input type="hidden" name="customer_id" value={customer.id} />
+                  <input
+                    name="label"
+                    placeholder="What's this a photo of? (optional)"
+                    className="min-w-[180px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent"
+                  />
+                  <input
+                    type="file"
+                    name="photo"
+                    accept="image/*"
+                    required
+                    className="text-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:border-accent hover:text-accent"
+                  >
+                    Upload
+                  </button>
+                </form>
+              </div>
+
+              <div className="mt-4 border-t border-border pt-3">
+                <div className="flex items-baseline justify-between">
+                  <h4 className="text-xs font-medium uppercase tracking-wide text-muted">
+                    Costs
+                  </h4>
+                  {job.job_expenses.length > 0 && (
+                    <span className="text-xs text-muted tabular-nums">
+                      Materials{" "}
+                      {formatMoney(
+                        job.job_expenses
+                          .filter((e) => e.category === "materials")
+                          .reduce((sum, e) => sum + e.amount, 0)
+                      )}{" "}
+                      · Labor{" "}
+                      {formatMoney(
+                        job.job_expenses
+                          .filter((e) => e.category === "labor")
+                          .reduce((sum, e) => sum + e.amount, 0)
+                      )}{" "}
+                      · Total{" "}
+                      {formatMoney(
+                        job.job_expenses.reduce((sum, e) => sum + e.amount, 0)
+                      )}
+                    </span>
+                  )}
+                </div>
+                {job.job_expenses.length > 0 && (
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {job.job_expenses.map((expense) => (
+                      <li
+                        key={expense.id}
+                        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-sm"
+                      >
+                        <span>
+                          <span className="text-muted">
+                            {formatDate(expense.spent_on)} ·{" "}
+                            {expenseCategoryLabel(expense.category)} ·{" "}
+                          </span>
+                          {expense.description}
+                          {expense.receipt_url && (
+                            <>
+                              {" "}
+                              <a
+                                href={expense.receipt_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accent hover:underline"
+                              >
+                                receipt
+                              </a>
+                            </>
+                          )}
+                        </span>
+                        <span className="tabular-nums">
+                          {formatMoney(expense.amount)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <form
+                  action={addJobExpense}
+                  className="mt-2 flex flex-wrap items-center gap-2"
+                >
+                  <input type="hidden" name="job_id" value={job.id} />
+                  <input type="hidden" name="customer_id" value={customer.id} />
+                  <select
+                    name="category"
+                    defaultValue="materials"
+                    className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent"
+                  >
+                    {EXPENSE_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {expenseCategoryLabel(category)}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    name="description"
+                    placeholder="What was it"
+                    required
+                    className="min-w-[140px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="amount"
+                    placeholder="0.00"
+                    required
+                    className="w-24 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent"
+                  />
+                  <input
+                    type="date"
+                    name="spent_on"
+                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-accent"
+                  />
+                  <input
+                    type="file"
+                    name="receipt"
+                    accept="image/*,application/pdf"
+                    className="text-sm"
+                    title="Receipt photo (optional)"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:border-accent hover:text-accent"
+                  >
+                    Add cost
+                  </button>
+                </form>
+              </div>
             </div>
           ))}
         </div>

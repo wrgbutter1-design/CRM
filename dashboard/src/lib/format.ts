@@ -48,3 +48,17 @@ export function statusLabel(status: JobStatus): string {
       return status.charAt(0).toUpperCase() + status.slice(1);
   }
 }
+
+export const EXPENSE_CATEGORIES = ["materials", "labor"] as const;
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+export function expenseCategoryLabel(category: ExpenseCategory): string {
+  return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|heic|heif)$/i;
+
+export function looksLikeImage(url: string): boolean {
+  return IMAGE_EXTENSIONS.test(new URL(url).pathname);
+}

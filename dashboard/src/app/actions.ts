@@ -19,6 +19,30 @@ function num(formData: FormData, key: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function file(formData: FormData, key: string): File | null {
+  const value = formData.get(key);
+  return value instanceof File && value.size > 0 ? value : null;
+}
+
+async function uploadJobFile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string,
+  uploaded: File
+): Promise<string> {
+  const safeName = uploaded.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+  const path = `${jobId}/${crypto.randomUUID()}-${safeName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("job-files")
+    .upload(path, uploaded, { contentType: uploaded.type || undefined });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("job-files").getPublicUrl(path);
+  return publicUrl;
+}
+
 export async function createCustomer(formData: FormData) {
   const name = str(formData, "name");
   if (!name) throw new Error("Customer name is required.");
@@ -92,6 +116,58 @@ export async function addJobNote(formData: FormData) {
   const { error } = await supabase
     .from("job_notes")
     .insert({ job_id: jobId, author, note });
+  if (error) throw new Error(error.message);
+
+  if (customerId) revalidatePath(`/customers/${customerId}`);
+}
+
+export async function addJobPhoto(formData: FormData) {
+  const jobId = str(formData, "job_id");
+  const customerId = str(formData, "customer_id");
+  const photo = file(formData, "photo");
+  if (!jobId || !photo) {
+    throw new Error("A photo is required.");
+  }
+  const label = str(formData, "label") ?? photo.name;
+
+  const supabase = await createClient();
+  const url = await uploadJobFile(supabase, jobId, photo);
+
+  const { error } = await supabase
+    .from("job_documents")
+    .insert({ job_id: jobId, label, url });
+  if (error) throw new Error(error.message);
+
+  if (customerId) revalidatePath(`/customers/${customerId}`);
+}
+
+export async function addJobExpense(formData: FormData) {
+  const jobId = str(formData, "job_id");
+  const customerId = str(formData, "customer_id");
+  const category = str(formData, "category");
+  const description = str(formData, "description");
+  const amount = num(formData, "amount");
+  if (
+    !jobId ||
+    !description ||
+    amount === null ||
+    (category !== "materials" && category !== "labor")
+  ) {
+    throw new Error("Description, amount, and category are required.");
+  }
+
+  const supabase = await createClient();
+  const receipt = file(formData, "receipt");
+  const receiptUrl = receipt ? await uploadJobFile(supabase, jobId, receipt) : null;
+
+  const { error } = await supabase.from("job_expenses").insert({
+    job_id: jobId,
+    category,
+    description,
+    amount,
+    spent_on: str(formData, "spent_on") ?? undefined,
+    receipt_url: receiptUrl,
+  });
   if (error) throw new Error(error.message);
 
   if (customerId) revalidatePath(`/customers/${customerId}`);

@@ -50,29 +50,70 @@ export type Database = {
       }
       job_documents: {
         Row: {
-          drive_url: string
           id: string
           job_id: string
           label: string
           uploaded_at: string
+          url: string
         }
         Insert: {
-          drive_url: string
           id?: string
           job_id: string
           label: string
           uploaded_at?: string
+          url: string
         }
         Update: {
-          drive_url?: string
           id?: string
           job_id?: string
           label?: string
           uploaded_at?: string
+          url?: string
         }
         Relationships: [
           {
             foreignKeyName: "job_documents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          description: string
+          id: string
+          job_id: string
+          receipt_url: string | null
+          spent_on: string
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          description: string
+          id?: string
+          job_id: string
+          receipt_url?: string | null
+          spent_on?: string
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          description?: string
+          id?: string
+          job_id?: string
+          receipt_url?: string | null
+          spent_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_expenses_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
@@ -201,6 +242,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      expense_category: "materials" | "labor"
       job_status:
         | "quoted"
         | "scheduled"
