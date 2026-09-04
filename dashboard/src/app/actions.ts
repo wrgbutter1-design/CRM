@@ -24,13 +24,13 @@ function file(formData: FormData, key: string): File | null {
   return value instanceof File && value.size > 0 ? value : null;
 }
 
-async function uploadJobFile(
+async function uploadToStorage(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  jobId: string,
+  folder: string,
   uploaded: File
 ): Promise<string> {
   const safeName = uploaded.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-  const path = `${jobId}/${crypto.randomUUID()}-${safeName}`;
+  const path = `${folder}/${crypto.randomUUID()}-${safeName}`;
 
   const { error: uploadError } = await supabase.storage
     .from("job-files")
@@ -131,7 +131,7 @@ export async function addJobPhoto(formData: FormData) {
   const label = str(formData, "label") ?? photo.name;
 
   const supabase = await createClient();
-  const url = await uploadJobFile(supabase, jobId, photo);
+  const url = await uploadToStorage(supabase, `jobs/${jobId}`, photo);
 
   const { error } = await supabase
     .from("job_documents")
@@ -158,7 +158,9 @@ export async function addJobExpense(formData: FormData) {
 
   const supabase = await createClient();
   const receipt = file(formData, "receipt");
-  const receiptUrl = receipt ? await uploadJobFile(supabase, jobId, receipt) : null;
+  const receiptUrl = receipt
+    ? await uploadToStorage(supabase, `jobs/${jobId}`, receipt)
+    : null;
 
   const { error } = await supabase.from("job_expenses").insert({
     job_id: jobId,
@@ -168,6 +170,55 @@ export async function addJobExpense(formData: FormData) {
     spent_on: str(formData, "spent_on") ?? undefined,
     receipt_url: receiptUrl,
   });
+  if (error) throw new Error(error.message);
+
+  if (customerId) revalidatePath(`/customers/${customerId}`);
+}
+
+export async function createEstimate(formData: FormData) {
+  const customerId = str(formData, "customer_id");
+  if (!customerId) throw new Error("Missing customer.");
+
+  const supabase = await createClient();
+  const { data: estimate, error } = await supabase
+    .from("estimates")
+    .insert({
+      customer_id: customerId,
+      site_address: str(formData, "site_address"),
+      notes: str(formData, "notes"),
+      estimated_amount: num(formData, "estimated_amount"),
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const photo = file(formData, "photo");
+  if (photo) {
+    const url = await uploadToStorage(supabase, `estimates/${estimate.id}`, photo);
+    const { error: docError } = await supabase
+      .from("estimate_documents")
+      .insert({ estimate_id: estimate.id, label: photo.name, url });
+    if (docError) throw new Error(docError.message);
+  }
+
+  revalidatePath(`/customers/${customerId}`);
+}
+
+export async function addEstimatePhoto(formData: FormData) {
+  const estimateId = str(formData, "estimate_id");
+  const customerId = str(formData, "customer_id");
+  const photo = file(formData, "photo");
+  if (!estimateId || !photo) {
+    throw new Error("A photo is required.");
+  }
+  const label = str(formData, "label") ?? photo.name;
+
+  const supabase = await createClient();
+  const url = await uploadToStorage(supabase, `estimates/${estimateId}`, photo);
+
+  const { error } = await supabase
+    .from("estimate_documents")
+    .insert({ estimate_id: estimateId, label, url });
   if (error) throw new Error(error.message);
 
   if (customerId) revalidatePath(`/customers/${customerId}`);

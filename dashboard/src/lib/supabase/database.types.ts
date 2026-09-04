@@ -48,6 +48,76 @@ export type Database = {
         }
         Relationships: []
       }
+      estimate_documents: {
+        Row: {
+          estimate_id: string
+          id: string
+          label: string
+          uploaded_at: string
+          url: string
+        }
+        Insert: {
+          estimate_id: string
+          id?: string
+          label: string
+          uploaded_at?: string
+          url: string
+        }
+        Update: {
+          estimate_id?: string
+          id?: string
+          label?: string
+          uploaded_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_documents_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estimates: {
+        Row: {
+          created_at: string
+          customer_id: string
+          estimated_amount: number | null
+          id: string
+          notes: string | null
+          site_address: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          estimated_amount?: number | null
+          id?: string
+          notes?: string | null
+          site_address?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          estimated_amount?: number | null
+          id?: string
+          notes?: string | null
+          site_address?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimates_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_documents: {
         Row: {
           id: string

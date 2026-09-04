@@ -13,7 +13,14 @@ import {
   statusLabel,
   toJobStatus,
 } from "@/lib/format";
-import { addJobExpense, addJobNote, addJobPhoto, createJob } from "../../actions";
+import {
+  addEstimatePhoto,
+  addJobExpense,
+  addJobNote,
+  addJobPhoto,
+  createEstimate,
+  createJob,
+} from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +61,18 @@ export default async function CustomerDetailPage({
 
   if (jobLeadersError) throw new Error(jobLeadersError.message);
 
+  const { data: estimates, error: estimatesError } = await supabase
+    .from("estimates")
+    .select("*, estimate_documents(id, label, url, uploaded_at)")
+    .eq("customer_id", id)
+    .order("created_at", { ascending: false })
+    .order("uploaded_at", {
+      ascending: false,
+      foreignTable: "estimate_documents",
+    });
+
+  if (estimatesError) throw new Error(estimatesError.message);
+
   return (
     <div className="flex flex-col gap-10">
       <div>
@@ -86,6 +105,147 @@ export default async function CustomerDetailPage({
             </div>
           )}
         </dl>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Estimates</h2>
+        <p className="mt-1 text-sm text-muted">
+          Field notes and photos from a walkthrough, before there&apos;s a job yet.
+        </p>
+        <div className="mt-4 flex flex-col gap-4">
+          {estimates.length === 0 && (
+            <p className="text-sm text-muted">
+              No estimates yet — add one below.
+            </p>
+          )}
+          {estimates.map((estimate) => (
+            <div
+              key={estimate.id}
+              className="rounded-xl border border-border bg-surface p-5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-medium">
+                    {estimate.site_address ?? "No address given"}
+                  </h3>
+                  <p className="text-xs text-muted">
+                    {formatDate(estimate.created_at.slice(0, 10))}
+                  </p>
+                </div>
+                <span className="tabular-nums text-sm font-medium">
+                  {formatMoney(estimate.estimated_amount)}
+                </span>
+              </div>
+              {estimate.notes && (
+                <p className="mt-2 whitespace-pre-wrap text-sm">
+                  {estimate.notes}
+                </p>
+              )}
+
+              {estimate.estimate_documents.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {estimate.estimate_documents.map((doc) => (
+                    <a
+                      key={doc.id}
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block overflow-hidden rounded-lg border border-border"
+                      title={doc.label}
+                    >
+                      {looksLikeImage(doc.url) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={doc.url}
+                          alt={doc.label}
+                          className="h-20 w-20 object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-20 w-20 items-center justify-center p-2 text-center text-xs text-muted">
+                          {doc.label}
+                        </span>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              <form
+                action={addEstimatePhoto}
+                className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3"
+              >
+                <input type="hidden" name="estimate_id" value={estimate.id} />
+                <input type="hidden" name="customer_id" value={customer.id} />
+                <input
+                  type="file"
+                  name="photo"
+                  accept="image/*"
+                  required
+                  className="text-sm"
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:border-accent hover:text-accent"
+                >
+                  Add photo
+                </button>
+              </form>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-border bg-surface p-5">
+          <h3 className="text-sm font-semibold">Add an estimate</h3>
+          <form
+            action={createEstimate}
+            className="mt-4 flex flex-col gap-4"
+          >
+            <input type="hidden" name="customer_id" value={customer.id} />
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium">Site address</span>
+              <input
+                name="site_address"
+                placeholder="Defaults to billing address"
+                className="rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-accent"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium">Notes from the walkthrough</span>
+              <textarea
+                name="notes"
+                rows={3}
+                placeholder="What you saw, what it needs…"
+                className="rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-accent"
+              />
+            </label>
+            <div className="flex flex-wrap items-end gap-4">
+              <label className="flex flex-col gap-1.5 text-sm">
+                <span className="font-medium">Estimated amount</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="estimated_amount"
+                  placeholder="0.00"
+                  className="w-32 rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-accent"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm">
+                <span className="font-medium">
+                  Photo of the paper notes (optional)
+                </span>
+                <input type="file" name="photo" accept="image/*" className="text-sm" />
+              </label>
+            </div>
+            <div>
+              <button
+                type="submit"
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-90"
+              >
+                Add estimate
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <div>
